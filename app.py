@@ -90,7 +90,7 @@ def etl():
     while not connection:
         try:
             connection = psycopg2.connect(
-                host="172.30.0.3",
+                host="postgres_container",
                 database="postgres",
                 user="defaultuser",
                 password="defaultpassword",
