@@ -1,5 +1,8 @@
 import csv
 import psycopg2
+from psycopg2 import OperationalError
+from flask import Flask
+import time
 
 def etl():
     compounds_csv = "data/compounds.csv"
@@ -33,7 +36,7 @@ def etl():
         compound_id_to_name[row[0]] = row[1]
         compound_count[row[0]] = 0
 
-    #for each user id, we map the user id to user user name
+    #for each user id, we map the user id to user name
     #we also initialize the compound counts for each user id to 0
     for user in data[users_csv][1:]:
         user_id = user[0]
@@ -45,12 +48,13 @@ def etl():
 
 
     #count number of experiments for each user id
-    user_id_to_exp_count = {}
+    user_name_to_exp_count = {}
     total_experiment_count = 0
 
     for experiments in data[user_experiments_csv][1:]:
         user_id = experiments[1]
-        user_id_to_exp_count[user_id] = user_id_to_exp_count.get(user_id, 0) + 1
+        user_name = user_id_to_name[user_id]
+        user_name_to_exp_count[user_name] = user_name_to_exp_count.get(user_name, 0) + 1
         total_experiment_count += 1
 
         #get the compounds
@@ -70,43 +74,93 @@ def etl():
             curr_count = user_id_to_compound_count[user_id][compound_id]
             if curr_count > max_count:
                 max_count = curr_count
-                common_compound = compound_id
+                common_compound = compound_id_to_name[compound_id]
+            elif curr_count == max_count and curr_count != 0:
+                common_compound = common_compound + ";" + compound_id_to_name[compound_id]
 
-        #grab user name using user id
         user_name = user_id_to_name[user_id]
         if common_compound:
-            compound_name = compound_id_to_name[common_compound]
-            user_name_to_most_common[user_name] = compound_name
+            user_name_to_most_common[user_name] = common_compound
         else:
             user_name_to_most_common[user_name] = None
 
     #calculate average experiments per user
     avg_experiments = total_experiment_count/len(user_id_to_name)
+    connection = None
+    while not connection:
+        try:
+            connection = psycopg2.connect(
+                host="172.30.0.3",
+                database="postgres",
+                user="defaultuser",
+                password="defaultpassword",
+                port=5432
+            )
+        except OperationalError as e:
+            print(e)
+            time.sleep(5)
+    cursor = connection.cursor()
 
-    for student in user_id_to_exp_count:
-        print(user_id_to_name[student], ":", user_id_to_exp_count[student])
+    # create table users
+    create_table_query = '''
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            user_name VARCHAR NOT NULL,
+            total_experiments INTEGER NOT NULL,
+            common_compound VARCHAR NOT NULL,
+            average_experiments FLOAT NOT NULL
+        )
+    '''
+    cursor.execute(create_table_query)
 
-    print("Average Experiments Amount per User: ", avg_experiments)
+    insert_data_query = '''
+    INSERT INTO users (user_name, total_experiments, common_compound, average_experiments)
+    VALUES (%s, %s, %s, %s)
+    '''
 
-    #if user's most common compound is None, that means no experiments were performed
-    print("Most common compounds:", user_name_to_most_common)
+    data_to_insert = []
 
+    #get the data we want to insert
+    for user_id in user_id_to_name:
+        user = user_id_to_name[user_id]
+
+        new_row = []
+        new_row.append(user)
+
+        if user in user_name_to_exp_count:
+            new_row.append(user_name_to_exp_count[user])
+        else:
+            new_row.append(0)
+
+        if user_name_to_most_common[user]:
+            new_row.append(user_name_to_most_common[user])
+        else:
+            new_row.append("No experiments were performed by user")
+
+        new_row.append(avg_experiments)
+
+        data_to_insert.append(new_row)
+
+    cursor.executemany(insert_data_query, data_to_insert)
+
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+    return 'ETL process successful'
+
+
+app = Flask(__name__)
 
 # Your API that can be called to trigger your ETL process
+@app.route('/trigger-etl', methods=['GET'])
 def trigger_etl():
     # Trigger your ETL process here
-    conn = psycopg2.connect(
-        database="exampledb",
-        user="docker",
-        password="docker",
-        host="0.0.0.0",
-        port="5433"
-    )
-    # cur = conn.cursor()
-    etl()
+    result = etl()
 
-    # cur.close()
-    conn.close()
-    return {"message": "ETL process started"}, 200
-    
-trigger_etl()
+    return {"message": result}, 200
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000)

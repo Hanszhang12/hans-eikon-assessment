@@ -1,14 +1,12 @@
-# Use the official Python base image with version 3.9
-FROM python:3.9
+FROM python:latest
 
-# Set the working directory inside the container
-WORKDIR app
+WORKDIR /app
 
-# Copy the application files to the working directory
-COPY . .
+COPY app.py requirements.txt /app/
+COPY data /app/data
 
-# Install Python dependencies
-RUN pip install --no-cache-dir psycopg2
+RUN pip install -r requirements.txt
 
-# Run the Python application
+EXPOSE 8000
+
 CMD ["python", "app.py"]
