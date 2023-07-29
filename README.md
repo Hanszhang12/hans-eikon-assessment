@@ -61,7 +61,7 @@ Successful execution of the ETL process.
 Accuracy of the derived features.
 
 ## How to run the code
-'''
+```
 git clone https://github.com/Hanszhang12/hans-eikon-assessment.git
 cd hans-eikon-assessment
 
@@ -77,7 +77,7 @@ curl http://localhost:8000/trigger-etl
 
 docker exec -it postgres_container psql -U defaultuser -d postgres
 
+#run this sql query
 SELECT * from users;
-
-'''
+```
 
