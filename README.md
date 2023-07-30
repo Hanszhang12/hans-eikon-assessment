@@ -71,9 +71,23 @@ python3 build.py
 #Trigger the ETL pipeline
 curl http://localhost:8000/trigger-etl
 
-#Connect to postgres database and default user
+#Connect to postgres database as default user
 docker exec -it postgres_container psql -U defaultuser -d postgres
 
 #Run this sql query to see the data in users table
 SELECT * from users;
+
+#The table should look something like this
+id | user_name | total_experiments |         common_compound          | average_experiments 
+----+-----------+-------------------+----------------------------------+---------------------
+  1 | Alice     |                 2 | Compound B                       |        1.1
+  2 | Bob       |                 1 | Compound A;Compound C            |        1.1
+  3 | Carol     |                 1 | Compound B;Compound C            |        1.1
+  4 | Dave      |                 1 | Compound A;Compound B;Compound C |        1.1
+  5 | Eve       |                 1 | Compound B;Compound C            |        1.1
+  6 | Frank     |                 1 | Compound A;Compound C            |        1.1
+  7 | Grace     |                 1 | Compound B;Compound C            |        1.1
+  8 | Heidi     |                 1 | Compound A;Compound B            |        1.1
+  9 | Ivan      |                 1 | Compound B;Compound C            |        1.1
+ 10 | Judy      |                 1 | Compound A;Compound C            |        1.1
 ```
