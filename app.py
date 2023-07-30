@@ -4,88 +4,54 @@ from psycopg2 import OperationalError
 from flask import Flask
 import time
 
+def read_csv_file(file_path):
+    with open(file_path, "r") as csvfile:
+        csvreader = csv.reader(csvfile)
+        return list(csvreader)
+
 def etl():
     compounds_csv = "data/compounds.csv"
     user_experiments_csv = "data/user_experiments.csv"
     users_csv = "data/users.csv"
 
     csv_files = [compounds_csv, user_experiments_csv, users_csv]
-    data = {}
+    data = {file: read_csv_file(file) for file in csv_files}
 
-    for file in csv_files:
-        new_data = []
-        with open(file, "r") as csvfile:
-                csvreader = csv.reader(csvfile)
-                for row in csvreader:
-                    new_data.append(row)
-        data[file] = new_data
+    compound_id_to_name = {row[0]: row[1] for row in data[compounds_csv][1:]}
+    user_id_to_name = {user[0]: user[1] for user in data[users_csv][1:]}
 
+    user_id_to_compound_count = {user_id: {comp_id: 0 for comp_id in compound_id_to_name} for user_id in user_id_to_name}
 
-    #map compound id to compound name
-    compound_id_to_name = {}
-
-    #map user id to user name
-    user_id_to_name = {}
-
-    #map user id to count of each compound
-    user_id_to_compound_count = {}
-
-    #dict to keep track of compound count
-    compound_count = {}
-    for row in data[compounds_csv][1:]:
-        compound_id_to_name[row[0]] = row[1]
-        compound_count[row[0]] = 0
-
-    #for each user id, we map the user id to user name
-    #we also initialize the compound counts for each user id to 0
-    for user in data[users_csv][1:]:
-        user_id = user[0]
-        user_name = user[1]
-        user_id_to_name[user_id] = user_name
-
-        #map existing compounds to userID
-        user_id_to_compound_count[user_id] = compound_count.copy()
-
-
-    #count number of experiments for each user id
     user_name_to_exp_count = {}
     total_experiment_count = 0
 
     for experiments in data[user_experiments_csv][1:]:
-        user_id = experiments[1]
+        user_id, _, compound_ids = experiments[1], experiments[0], experiments[2].split(';')
         user_name = user_id_to_name[user_id]
+
         user_name_to_exp_count[user_name] = user_name_to_exp_count.get(user_name, 0) + 1
         total_experiment_count += 1
 
-        #get the compounds
-        experiment_compounds = experiments[2].split(';')
-
-        #loop through the compounds used in this experiment and add to the count for the userID
-        for compound_id in experiment_compounds:
+        for compound_id in compound_ids:
             user_id_to_compound_count[user_id][compound_id] += 1
 
-    #calculate most commonly used compound for each user
     user_name_to_most_common = {}
-    for user_id in user_id_to_compound_count:
+    for user_id, compound_counts in user_id_to_compound_count.items():
         max_count = 0
-        common_compound = None
+        common_compound = []
 
-        for compound_id in user_id_to_compound_count[user_id]:
-            curr_count = user_id_to_compound_count[user_id][compound_id]
-            if curr_count > max_count:
-                max_count = curr_count
-                common_compound = compound_id_to_name[compound_id]
-            elif curr_count == max_count and curr_count != 0:
-                common_compound = common_compound + ";" + compound_id_to_name[compound_id]
+        for compound_id, count in compound_counts.items():
+            if count > max_count:
+                max_count = count
+                common_compound = [compound_id_to_name[compound_id]]
+            elif count == max_count and count != 0:
+                common_compound.append(compound_id_to_name[compound_id])
 
         user_name = user_id_to_name[user_id]
-        if common_compound:
-            user_name_to_most_common[user_name] = common_compound
-        else:
-            user_name_to_most_common[user_name] = None
+        user_name_to_most_common[user_name] = ';'.join(common_compound) if common_compound else None
 
-    #calculate average experiments per user
-    avg_experiments = total_experiment_count/len(user_id_to_name)
+    avg_experiments = total_experiment_count / len(user_id_to_name)
+    
     connection = None
     while not connection:
         try:
