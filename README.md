@@ -47,7 +47,7 @@ Please provide the following in a GITHUB REPOSITORY.
 4. A brief README explaining how to build and run your application, and how to trigger the ETL process.
 
 
-Please also provide a script that builds, and runs the docker container. 
+Please also provide a script that builds, and runs the docker container.
 You should also provide a script that scaffolds how a user can run the ETL process. This can be `curl` or something else.
 Finally, provide a script that queries the database and showcases that it has been populated with the desired features.
 
@@ -65,19 +65,14 @@ Accuracy of the derived features.
 git clone https://github.com/Hanszhang12/hans-eikon-assessment.git
 cd hans-eikon-assessment
 
-docker build -t hans_flask_image .
+python3 build.py
 
-docker network create hans_network
+#Trigger the ETL pipeline
+curl http://localhost:8000/trigger-etl
 
-docker run -d -p 8000:8000 --name hans_container --net hans_network hans_flask_image
-
-docker run -d --name postgres_container -e POSTGRES_USER=defaultuser -e POSTGRES_PASSWORD=defaultpassword -e POSTGRES_DB=postgres -p 5432:5432 --net hans_network postgres
-
-curl http://localhost:8000/trigger-etl 
-
+#Connect to postgres database and default user
 docker exec -it postgres_container psql -U defaultuser -d postgres
 
-#run this sql query
+#Run this sql query to see the data in users table
 SELECT * from users;
 ```
-
