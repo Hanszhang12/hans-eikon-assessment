@@ -65,6 +65,7 @@ Accuracy of the derived features.
 git clone https://github.com/Hanszhang12/hans-eikon-assessment.git
 cd hans-eikon-assessment
 
+#Build and run docker containers
 python3 build.py
 
 #Trigger the ETL pipeline
