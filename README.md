@@ -59,3 +59,25 @@ Code quality and organization.
 Proper use of Python and Docker.
 Successful execution of the ETL process.
 Accuracy of the derived features.
+
+## How to run the code
+```
+git clone https://github.com/Hanszhang12/hans-eikon-assessment.git
+cd hans-eikon-assessment
+
+docker build -t hans_flask_image .
+
+docker network create hans_network
+
+docker run -d -p 8000:8000 --name hans_container --net hans_network hans_flask_image
+
+docker run -d --name postgres_container -e POSTGRES_USER=defaultuser -e POSTGRES_PASSWORD=defaultpassword -e POSTGRES_DB=postgres -p 5432:5432 --net hans_network postgres
+
+curl http://localhost:8000/trigger-etl 
+
+docker exec -it postgres_container psql -U defaultuser -d postgres
+
+#run this sql query
+SELECT * from users;
+```
+
