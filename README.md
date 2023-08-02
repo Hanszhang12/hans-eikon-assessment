@@ -52,14 +52,6 @@ You should also provide a script that scaffolds how a user can run the ETL proce
 Finally, provide a script that queries the database and showcases that it has been populated with the desired features.
 
 
-## Evaluation
-Your solution will be evaluated on the following criteria:
-
-Code quality and organization.
-Proper use of Python and Docker.
-Successful execution of the ETL process.
-Accuracy of the derived features.
-
 ## How to run the code
 ```
 git clone https://github.com/Hanszhang12/hans-eikon-assessment.git
